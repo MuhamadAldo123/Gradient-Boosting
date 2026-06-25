@@ -102,26 +102,30 @@ if submitted:
         st.markdown("---")
         st.subheader("🎯 Hasil Prediksi Model (Target: age_group)")
         
-        st.success(f"**Model memprediksi pasien masuk dalam kelas:** `{prediksi}`")
+        # Menerjemahkan angka 0 dan 1 menjadi teks
+        nama_kelas = "Non-Senior (< 65 tahun)" if prediksi == 0 else "Senior (≥ 65 tahun)"
+        
+        # Memberikan warna beda untuk hasil prediksi
+        if prediksi == 0:
+            st.success(f"**Model memprediksi pasien masuk dalam kelas:** `{prediksi}` - **{nama_kelas}**")
+        else:
+            st.warning(f"**Model memprediksi pasien masuk dalam kelas:** `{prediksi}` - **{nama_kelas}**")
         
         # Penjelasan kelas berdasarkan dokumentasi UCI NHANES
         st.markdown("""
         💡 **Keterangan Output Label:**
         Berdasarkan dataset asli, prediksi menargetkan dua grup:
-        * **Senior** : Individu berusia 65 tahun ke atas.
-        * **Non-Senior** : Individu berusia di bawah 65 tahun.
+        * **Kelas 0 (Non-Senior)** : Individu berusia di bawah 65 tahun.
+        * **Kelas 1 (Senior)** : Individu berusia 65 tahun ke atas.
         """)
 
         st.write("### Detail Probabilitas (Keyakinan Model):")
         
-        # Menarik otomatis nama kelas yang ada di dalam model
-        kelas_model = model.classes_
-        
         col1, col2 = st.columns(2)
         with col1:
-            st.metric(label=f"Peluang Kelas '{kelas_model[0]}'", value=f"{probabilitas[0] * 100:.1f}%")
+            st.metric(label="Peluang Kelas '0' (Non-Senior)", value=f"{probabilitas[0] * 100:.1f}%")
         with col2:
-            st.metric(label=f"Peluang Kelas '{kelas_model[1]}'", value=f"{probabilitas[1] * 100:.1f}%")
+            st.metric(label="Peluang Kelas '1' (Senior)", value=f"{probabilitas[1] * 100:.1f}%")
             
     except Exception as e:
         st.error(f"Terjadi kesalahan saat prediksi: {e}")
