@@ -12,28 +12,78 @@ try:
 except Exception as e:
     st.error(f"Gagal memuat model: {e}")
 
-st.title("Aplikasi Prediksi Gradient Boosting")
+st.title("Prediksi Kelompok Usia Berdasarkan Kesehatan (NHANES 2013-2014)")
+st.markdown("""
+Aplikasi ini menggunakan dataset **NHANES Age Prediction Subset** dari UCI Machine Learning Repository. 
+Tujuan dari model ini adalah memprediksi apakah profil kesehatan seseorang lebih mencerminkan kelompok **Senior (≥ 65 tahun)** atau **Non-Senior (< 65 tahun)** berdasarkan pengukuran fisiologis, tes biokimia, dan gaya hidup.
+""")
 
-# Form input data untuk mencegah refresh otomatis setiap kali input berubah
+# Form input data
 with st.form("prediction_form"):
-    st.subheader("Input Fitur Model")
+    st.subheader("📊 Pengukuran Fisiologis & Biokimia")
 
     # Fitur Numerik
-    bmxbmi = st.number_input("BMXBMI (Indeks Massa Tubuh)", value=25.0, step=0.1)
-    lbxglu = st.number_input("LBXGLU (Glukosa Darah Puasa)", value=100.0, step=1.0)
-    lbxglt = st.number_input("LBXGLT (Glukosa Toleransi Oral)", value=140.0, step=1.0)
-    lbxin = st.number_input("LBXIN (Insulin)", value=15.0, step=0.1)
+    bmxbmi = st.number_input(
+        "BMXBMI - Indeks Massa Tubuh (BMI)", 
+        value=25.0, step=0.1,
+        help="Continuous: Nilai Body Mass Index (BMI) responden."
+    )
+    lbxglu = st.number_input(
+        "LBXGLU - Glukosa Darah Puasa (mg/dL)", 
+        value=100.0, step=1.0,
+        help="Continuous: Kadar glukosa darah responden setelah berpuasa."
+    )
+    lbxglt = st.number_input(
+        "LBXGLT - Glukosa Toleransi Oral (mg/dL)", 
+        value=140.0, step=1.0,
+        help="Continuous: Kadar glukosa darah setelah Tes Toleransi Glukosa Oral (OGTT)."
+    )
+    lbxin = st.number_input(
+        "LBXIN - Kadar Insulin (μU/mL)", 
+        value=15.0, step=0.1,
+        help="Continuous: Kadar insulin dalam darah responden."
+    )
 
-    # Fitur Kategorikal
-    riagendr = st.selectbox("RIAGENDR (Jenis Kelamin)", options=[1, 2], format_func=lambda x: "Pria" if x == 1 else "Wanita")
-    paq605 = st.selectbox("PAQ605 (Aktivitas Fisik)", options=[1, 2, 7, 9])
-    diq010 = st.selectbox("DIQ010 (Status Diabetes)", options=[1, 2, 3, 7, 9])
+    st.markdown("---")
+    st.subheader("🗣️ Demografi & Gaya Hidup")
+
+    # Fitur Kategorikal 
+    riagendr = st.selectbox(
+        "RIAGENDR - Jenis Kelamin", 
+        options=[1, 2], 
+        format_func=lambda x: "1 - Pria" if x == 1 else "2 - Wanita",
+        help="Feature: Jenis kelamin responden."
+    )
+    
+    paq605 = st.selectbox(
+        "PAQ605 - Aktivitas Fisik", 
+        options=[1, 2, 7, 9],
+        format_func=lambda x: {
+            1: "1 - Ya (Melakukan olahraga/aktivitas fisik sedang-berat)", 
+            2: "2 - Tidak (Tidak melakukan)", 
+            7: "7 - Menolak menjawab", 
+            9: "9 - Tidak tahu"
+        }[x],
+        help="Feature: Apakah responden terlibat dalam olahraga atau aktivitas fisik intensitas sedang/berat di minggu biasa."
+    )
+    
+    diq010 = st.selectbox(
+        "DIQ010 - Riwayat Diabetes", 
+        options=[1, 2, 3, 7, 9],
+        format_func=lambda x: {
+            1: "1 - Ya (Pernah diberitahu dokter mengidap diabetes)", 
+            2: "2 - Tidak", 
+            3: "3 - Borderline (Garis batas/Prediabetes)", 
+            7: "7 - Menolak menjawab", 
+            9: "9 - Tidak tahu"
+        }[x],
+        help="Feature: Apakah responden pernah diberitahu oleh dokter bahwa mereka mengidap diabetes."
+    )
 
     # Tombol Submit
-    submitted = st.form_submit_button("Lakukan Prediksi")
+    submitted = st.form_submit_button("Lakukan Prediksi", use_container_width=True)
 
 if submitted:
-    # Struktur data input disesuaikan dengan ColumnTransformer pada model
     input_data = pd.DataFrame({
         'BMXBMI': [bmxbmi],
         'LBXGLU': [lbxglu],
@@ -46,11 +96,32 @@ if submitted:
 
     try:
         # Eksekusi prediksi
-        prediksi = model.predict(input_data)
-        probabilitas = model.predict_proba(input_data)
+        prediksi = model.predict(input_data)[0]
+        probabilitas = model.predict_proba(input_data)[0]
 
-        st.success("Proses Prediksi Berhasil")
-        st.write(f"**Hasil Prediksi Kelas:** {prediksi[0]}")
-        st.write(f"**Probabilitas Nilai:** {probabilitas[0]}")
+        st.markdown("---")
+        st.subheader("🎯 Hasil Prediksi Model (Target: age_group)")
+        
+        st.success(f"**Model memprediksi pasien masuk dalam kelas:** `{prediksi}`")
+        
+        # Penjelasan kelas berdasarkan dokumentasi UCI NHANES
+        st.markdown("""
+        💡 **Keterangan Output Label:**
+        Berdasarkan dataset asli, prediksi menargetkan dua grup:
+        * **Senior** : Individu berusia 65 tahun ke atas.
+        * **Non-Senior** : Individu berusia di bawah 65 tahun.
+        """)
+
+        st.write("### Detail Probabilitas (Keyakinan Model):")
+        
+        # Menarik otomatis nama kelas yang ada di dalam model
+        kelas_model = model.classes_
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(label=f"Peluang Kelas '{kelas_model[0]}'", value=f"{probabilitas[0] * 100:.1f}%")
+        with col2:
+            st.metric(label=f"Peluang Kelas '{kelas_model[1]}'", value=f"{probabilitas[1] * 100:.1f}%")
+            
     except Exception as e:
         st.error(f"Terjadi kesalahan saat prediksi: {e}")
